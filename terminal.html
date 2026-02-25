@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>OMNI-SHELL | Tactical Terminal v5.0</title>
+    <style>
+        :root {
+            --neon: #00ff41;
+            --bg: #050505;
+            --warn: #ffcc00;
+            --err: #ff3e3e;
+            --dim: #003300;
+            --blue: #00d9ff;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--neon);
+            font-family: 'Courier New', monospace;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* CRT FX */
+        body::after {
+            content: " ";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 2000;
+        }
+
+        .glitch {
+            animation: shake 0.2s linear infinite;
+            filter: contrast(200%) brightness(150%);
+        }
+
+        @keyframes shake {
+            0% {
+                transform: translate(1px, 1px);
+            }
+
+            25% {
+                transform: translate(-1px, -1px);
+            }
+
+            50% {
+                transform: translate(1px, -1px);
+            }
+
+            75% {
+                transform: translate(-1px, 1px);
+            }
+
+            100% {
+                transform: translate(0);
+            }
+        }
+
+        #boot-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 3000;
+            padding: 40px;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+            color: var(--neon);
+        }
+
+        #main-container {
+            display: none;
+            grid-template-columns: 1fr 350px;
+            height: 100vh;
+        }
+
+        /* Terminal Styling */
+        #terminal {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            border-right: 1px solid var(--dim);
+            overflow: hidden;
+            position: relative;
+        }
+
+        #history {
+            flex-grow: 1;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .input-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+            border-top: 1px solid var(--dim);
+        }
+
+        input {
+            background: transparent;
+            border: none;
+            color: white;
+            flex-grow: 1;
+            font-family: inherit;
+            font-size: 1.1em;
+            outline: none;
+            caret-color: var(--neon);
+        }
+
+        /* Sidebar Styling */
+        #sidebar {
+            background: #080808;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            border-left: 1px solid var(--dim);
+            gap: 20px;
+        }
+
+        .module {
+            border: 1px solid var(--dim);
+            padding: 10px;
+            background: #000;
+        }
+
+        .module-title {
+            color: var(--warn);
+            font-size: 0.8em;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.85em;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #111;
+            margin-top: 5px;
+        }
+
+        #trace-progress {
+            height: 100%;
+            background: var(--err);
+            width: 0%;
+            transition: width 0.5s;
+        }
+
+        /* Network Map */
+        #net-map {
+            height: 120px;
+            border: 1px dashed var(--dim);
+            position: relative;
+            margin-top: 10px;
+            overflow: hidden;
+            background: radial-gradient(circle, #001100 0%, #000 70%);
+        }
+
+        .node {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--dim);
+            border-radius: 50%;
+        }
+
+        .node.active {
+            background: var(--neon);
+            box-shadow: 0 0 10px var(--neon);
+        }
+
+        .node.target {
+            background: var(--err);
+        }
+
+        /* Formatting Classes */
+        .success {
+            color: #50fa7b;
+        }
+
+        .err {
+            color: var(--err);
+        }
+
+        .info {
+            color: var(--blue);
+        }
+
+        .dim {
+            color: #006400;
+        }
+
+        .prompt-user {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .prompt-path {
+            color: var(--blue);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="boot-screen"></div>
+
+    <div id="main-container">
+        <div id="terminal">
+            <div id="history"></div>
+            <div class="input-area">
+                <span id="prompt-container">
+                    <span class="prompt-user">guest@omni</span>:<span class="prompt-path">~</span>$
+                </span>
+                <input type="text" id="cmd" autofocus spellcheck="false" autocomplete="off">
+            </div>
+        </div>
+
+        <div id="sidebar">
+            <div class="module">
+                <div class="module-title">Status: Encrypted Connection</div>
+                <div class="stat-row">TRACE LEVEL <span id="trace-val">0%</span></div>
+                <div class="progress-bar">
+                    <div id="trace-progress"></div>
+                </div>
+                <div class="stat-row" style="margin-top:10px">UPLINK <span id="latency">--</span></div>
+                <div class="stat-row">ENCRYPTION <span class="success">AES-256</span></div>
+            </div>
+
+            <div class="module">
+                <div class="module-title">Network Topology</div>
+                <div id="net-map">
+                    <div class="node active" style="top:20%; left:20%" title="Localhost"></div>
+                    <div class="node" id="node-router" style="top:50%; left:50%" title="Gateway"></div>
+                    <div class="node target" id="node-target" style="top:80%; left:70%" title="Target"></div>
+                </div>
+            </div>
+
+            <div class="module" id="mission-log">
+                <div class="module-title">Active Mission</div>
+                <div id="m-1">• Scan Gateway Subnet (nmap)</div>
+                <div id="m-2" class="dim">• Crack 'creds.md5' (john)</div>
+                <div id="m-3" class="dim">• Remote Login (ssh)</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* --- VFS CONFIG --- */
+        let isWordlistDownloaded = false; // Track download state
+        const vfs = {
+            "~": { type: "dir", children: ["bin", "home", "sys"] },
+            "~/bin": { type: "dir", children: ["nmap", "ssh", "john", "clear", "help", "msfconsole"] },
+            "~/home": { type: "dir", children: ["guest"] },
+            "~/home/guest": { type: "dir", children: ["notes.txt", "creds.md5"] },
+            "~/sys": { type: "dir", children: ["config", "logs"] }
+        };
+
+        const fileData = {
+            "notes.txt": "Gateway: 192.168.1.1\nInternal Subnet: 192.168.1.0/24\nTask: Find the node with SSH (Port 22) enabled.",
+            "creds.md5": "admin:21232f297a57a5a743894a0e4a801fc3",
+            "wordlist.txt": "password\n123456\nqwerty\nadmin\nroot\n12345",
+            "config": "NET_MASK=255.255.255.0\nGATEWAY_AUTH=TRUE",
+            "logs": "CRITICAL_VULN_FOUND: 192.168.1.42\nSERVICE: SMBv1 (MS17-010)\nSTATUS: Unpatched. Exploit confirmed via MSF."
+        };
+
+        // Function to be called by the Browser UI (The Hub)
+        window.setWordlistDownloaded = function () {
+            isWordlistDownloaded = true;
+            if (!vfs["~/home/guest"].children.includes("wordlist.txt")) {
+                vfs["~/home/guest"].children.push("wordlist.txt");
+            }
+        };
+
+        let currentPath = "~";
+        let traceLevel = 0;
+        let isRoot = false;
+        let hasScanned = false;
+        let isCracked = false;
+        const TARGET_IP = "192.168.1.55";
+
+        /* --- UI ENGINE --- */
+        const history = document.getElementById('history');
+        const cmdInput = document.getElementById('cmd');
+        const bootScreen = document.getElementById('boot-screen');
+
+        function print(text, type = "") {
+            const div = document.createElement('div');
+            div.className = `line ${type}`;
+            div.innerHTML = text.replace(/\n/g, '<br>');
+            history.appendChild(div);
+            history.scrollTop = history.scrollHeight;
+        }
+
+        function updateTrace(amt) {
+            traceLevel = Math.min(100, traceLevel + amt);
+            document.getElementById('trace-val').innerText = traceLevel + "%";
+            document.getElementById('trace-progress').style.width = traceLevel + "%";
+            if (traceLevel > 70) triggerGlitch(true);
+        }
+
+        function triggerGlitch(permanent = false) {
+            document.body.classList.add('glitch');
+            if (!permanent) setTimeout(() => document.body.classList.remove('glitch'), 400);
+        }
+
+        /* --- BOOT LOGIC --- */
+        const bootSequence = [
+            "OMNI-BIOS v5.0.0 (C) 2026",
+            "Initializing Neural-Static Uplink...",
+            "Mounting /dev/sda2 on /sys...",
+            "Establishing peer-to-peer relay [OK]",
+            "System checks complete. Welcome, Operator."
+        ];
+
+        let bIdx = 0;
+        function runBoot() {
+            if (bIdx < bootSequence.length) {
+                bootScreen.innerHTML += bootSequence[bIdx] + "\n";
+                bIdx++;
+                setTimeout(runBoot, 400);
+            } else {
+                bootScreen.innerHTML += "\n[ PRESS ENTER TO START SESSION ]";
+            }
+        }
+        runBoot();
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && bootScreen.style.display !== 'none') {
+                bootScreen.style.display = 'none';
+                document.getElementById('main-container').style.display = 'grid';
+                print("OMNI-OS v5.0 Tactical Shell", "info");
+                print("Unauthorized access is a felony. Stealth protocols ACTIVE.\n");
+            }
+        });
+
+        /* --- UPDATED COMMANDS --- */
+        const commands = {
+            "help": () => "Available: ls, cd, cat, nmap, john, ssh, clear, whoami",
+
+            "whoami": () => isRoot ? "root (System Administrator)" : "guest (Temporary Access)",
+
+            "clear": () => { history.innerHTML = ''; return ''; },
+
+            "ls": () => {
+                const dir = vfs[currentPath];
+                return dir.children.map(item => {
+                    return vfs[`${currentPath}/${item}`] ? `<span class="success">[${item}]</span>` : item;
+                }).join("  ");
+            },
+
+            "cd": (args) => {
+                const dest = args[0];
+                if (!dest || dest === "~") currentPath = "~";
+                else if (dest === "..") {
+                    const parts = currentPath.split("/");
+                    if (parts.length > 1) parts.pop();
+                    currentPath = parts.join("/");
+                } else {
+                    const potential = `${currentPath}/${dest}`;
+
+                    // Restricted access to 'sys' directory
+                    if ((dest === "sys" || potential.includes("~/sys")) && !isRoot) {
+                        triggerGlitch();
+                        return `<span class="err">ACCESS DENIED: Directory 'sys' is locked. Root privileges required.</span>`;
+                    }
+
+                    if (vfs[potential]) currentPath = potential;
+                    else return `<span class="err">Directory not found: ${dest}</span>`;
+                }
+                updatePrompt();
+                return "";
+            },
+
+            "cat": (args) => {
+                const file = args[0];
+
+                if (!file) return "Usage: cat [file]";
+
+                if (file === "wordlist.txt" && !isWordlistDownloaded) {
+                    return `<span class='err'>cat: wordlist.txt: No such file or directory.</span>`;
+                }
+
+                if (isRoot && file === "logs") {
+
+                    window.parent.postMessage({
+                        type: 'VULN_DATA_FOUND',
+                        targetIp: '192.168.1.42',
+                        exploit: 'ms17_010_eternalblue'
+                    }, '*');
+
+                    print("[!] VULNERABILITY DATA EXPORTED TO EXPLOIT ENGINE", "success");
+
+                    return fileData[file];
+                }
+
+                if (isRoot && file === "config") {
+                    print("Extracting config...", "info");
+                    return fileData[file];
+                }
+
+                if (fileData[file]) {
+                    return fileData[file];
+                }
+
+                return `<span class="err">File not found: ${file}</span>`;
+            },
+
+            "nmap": (args) => {
+                if (!args[0]) return "Usage: nmap [target_range_or_ip]";
+                if (args[0] !== "192.168.1.0/24") {
+                    return `<span class='err'>nmap: Range ${args[0]} is outside of accessible uplink.</span>`;
+                }
+
+                print(`Starting Nmap 7.92 ( https://nmap.org ) at 2026-02-19...`, "dim");
+                updateTrace(15);
+                cmdInput.disabled = true;
+
+                setTimeout(() => {
+                    print("\nNmap scan report for 192.168.1.1 (Gateway)");
+                    print("PORT     STATE  SERVICE\n80/tcp   open   http\n443/tcp  open   https", "info");
+
+                    print("\nNmap scan report for 192.168.1.55 (Deep-Storage-Node)");
+                    print("PORT     STATE  SERVICE\n22/tcp   <span class='success'>open</span>   ssh", "info");
+
+                    print("\nNmap done: 256 IP addresses (5 hosts up) scanned.", "dim");
+
+                    hasScanned = true;
+                    cmdInput.disabled = false;
+                    cmdInput.focus();
+
+                    document.getElementById('node-router').classList.add('active');
+                    document.getElementById('m-1').classList.add('success');
+                    document.getElementById('m-2').classList.remove('dim');
+                }, 3000);
+
+                return "Initiating SYN Stealth Scan...";
+            },
+
+            "john": (args) => {
+                if (!args[0] || !args[1]) return "Usage: john [wordlist] [hash_file]";
+
+                // CHECK IF DOWNLOADED
+                if (args[0] === "wordlist.txt" && !isWordlistDownloaded) {
+                    triggerGlitch();
+                    return `<span class='err'>CRITICAL ERROR: 'wordlist.txt' not found in local storage.<br>WARNING: Tactical assets must be fetched from the Tor Browser Hub before execution.</span>`;
+                }
+
+                if (args[0] !== "wordlist.txt" || args[1] !== "creds.md5") {
+                    return "<span class='err'>Error: File access denied or file not found.</span>";
+                }
+
+                print("Starting John the Ripper v1.9.0-jumbo-1...", "info");
+                print("Loaded 1 password hash (MD5)", "dim");
+                cmdInput.disabled = true;
+
+                let words = fileData["wordlist.txt"].split("\n");
+                let i = 0;
+
+                const crackCycle = setInterval(() => {
+                    if (i < words.length) {
+                        print(`Checking: ${words[i]}...`, "dim");
+                        if (words[i] === "admin") {
+                            clearInterval(crackCycle);
+                            print("\n[+] <span class='success'>admin</span> (admin:21232f297a57a5a743894a0e4a801fc3)</span>", "info");
+                            isCracked = true;
+                            cmdInput.disabled = false;
+                            cmdInput.focus();
+                            document.getElementById('m-2').classList.add('success');
+                            document.getElementById('m-3').classList.remove('dim');
+                        }
+                        i++;
+                    } else {
+                        clearInterval(crackCycle);
+                        print("Session completed.", "err");
+                        cmdInput.disabled = false;
+                        cmdInput.focus();
+                    }
+                }, 400);
+
+                return "Initiating dictionary attack...";
+            },
+
+            "ssh": (args) => {
+                if (!hasScanned) return "<span class='err'>ssh: Network unreachable. Run 'nmap' first.</span>";
+                if (!isCracked) return "<span class='err'>ssh: Permission denied (publickey). You need the decrypted password.</span>";
+
+                const ip = args[0];
+                if (ip === TARGET_IP) {
+                    const pass = prompt("Enter SSH Password:");
+                    if (pass === "admin") {
+                        isRoot = true;
+                        updatePrompt();
+                        document.getElementById('node-target').classList.add('active');
+                        document.getElementById('m-3').classList.add('success');
+                        document.body.style.boxShadow = "inset 0 0 100px #00ff41";
+                        return "<span class='success'>ROOT ACCESS GRANTED. Welcome to Deep Storage.</span>";
+                    } else {
+                        updateTrace(25);
+                        triggerGlitch();
+                        return "<span class='err'>AUTHENTICATION FAILURE.</span>";
+                    }
+                }
+                return "ssh: No route to host.";
+            },
+            "msfconsole": () => {
+                if (!isRoot) {
+                    triggerGlitch();
+                    return "<span class='err'>PERMISSION DENIED: Metasploit Framework requires root privileges.</span>";
+                }
+
+                print("Launching Metasploit Framework...", "info");
+
+                // Tell the main page to swap this iframe to MSF
+                setTimeout(() => {
+                    window.parent.postMessage({
+                        type: 'SWAP_TO_MSF',
+                        targetIp: '192.168.1.42' // Pass the leaked IP data here directly
+                    }, '*');
+                }, 1000);
+
+                return "Initializing Ruby interpreter...";
+            }
+        };
+
+        function updatePrompt() {
+            const userStr = isRoot ? 'root' : 'guest';
+            const char = isRoot ? '#' : '$';
+            document.getElementById('prompt-container').innerHTML =
+                `<span class="prompt-user">${userStr}@omni</span>:<span class="prompt-path">${currentPath}</span>${char}`;
+        }
+
+        /* --- EVENT HANDLERS --- */
+        cmdInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const val = cmdInput.value.trim();
+                const [cmd, ...args] = val.split(" ");
+
+                print(`<span class="prompt-user">${isRoot ? 'root' : 'guest'}@omni</span>:${currentPath}$ ${val}`);
+
+                if (commands[cmd]) {
+                    const out = commands[cmd](args);
+                    if (out) print(out);
+                } else if (val !== "") {
+                    print(`Command not found: ${cmd}`, "err");
+                }
+
+                cmdInput.value = "";
+            }
+
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const val = cmdInput.value.toLowerCase();
+                const dir = vfs[currentPath];
+                const options = [...Object.keys(commands), ...dir.children];
+                const match = options.find(o => o.startsWith(val));
+                if (match) cmdInput.value = match;
+            }
+        });
+
+        setInterval(() => {
+            document.getElementById('latency').innerText = Math.floor(Math.random() * 30) + 15 + "ms";
+        }, 2000);
+
+        // Add this to your TERMINAL HTML script
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'SYNC_VFS') {
+                isWordlistDownloaded = true;
+                if (!vfs["~/home/guest"].children.includes("wordlist.txt")) {
+                    vfs["~/home/guest"].children.push("wordlist.txt");
+                    print("Incoming sync: wordlist.txt received.", "info");
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

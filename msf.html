@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>msfconsole | Framework Simulation</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #d1d5da;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #terminal-header {
+            background: #1c1f2b;
+            padding: 5px 15px;
+            font-size: 12px;
+            color: #8b949e;
+            border-bottom: 1px solid #30363d;
+        }
+
+        #console-output {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .kali-blue {
+            color: #007bff;
+        }
+
+        .success {
+            color: #27c93f;
+        }
+
+        .danger {
+            color: #f85149;
+        }
+
+        .warning {
+            color: #e3b341;
+        }
+
+        #input-line {
+            display: flex;
+            padding: 10px 20px;
+            background: #050505;
+        }
+
+        #prompt {
+            color: #f85149;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        #user-input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: inherit;
+            font-size: 13px;
+            flex-grow: 1;
+            outline: none;
+        }
+
+        .ascii-art {
+            color: #007bff;
+            font-size: 10px;
+            line-height: 1;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="terminal-header">Metasploit Framework Console (MSF v6.0)</div>
+
+    <div id="console-output">
+        <div class="ascii-art">
+            =[ metasploit v6.0.22-dev ]
+            + -- --=[ 2085 exploits - 1125 auxiliary - 352 post ]
+            + -- --=[ 592 payloads - 45 encoders - 10 nops ]
+            + -- --=[ 7 evasion ]
+        </div>
+        <span class="kali-blue">[*] Starting the Metasploit Framework console...</span>
+        <span class="kali-blue">[*] Initializing modules...</span>
+
+        msf6 > _
+    </div>
+
+    <div id="input-line">
+        <span id="prompt">msf6 ></span>
+        <input type="text" id="user-input" autofocus spellcheck="false" autocomplete="off">
+    </div>
+
+    <script>
+        const output = document.getElementById('console-output');
+        const input = document.getElementById('user-input');
+        const prompt = document.getElementById('prompt');
+
+        let stage = 0;
+        let targetUnlocked = false;
+        let currentTarget = "";
+        let sessionActive = false; // NEW: Track if we are in Meterpreter
+        // New state for pivoting
+        let discoveredNetwork = false;
+
+        // 1. DATA SYNC
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'VULN_DATA_FOUND') {
+                targetUnlocked = true;
+                currentTarget = event.data.targetIp;
+                const info = document.createElement('div');
+                info.className = "warning";
+                info.innerHTML = `\n[*] External Data Import: MS17-010 Vulnerability confirmed at ${currentTarget}`;
+                output.appendChild(info);
+                output.scrollTop = output.scrollHeight;
+            }
+        });
+
+        // 2. COMMAND LOGIC (MSF6 & METERPRETER)
+        const commands = {
+            // MSF6 Level Commands
+            "use exploit/windows/smb/ms17_010_eternalblue": () => {
+                stage = 1;
+                prompt.innerText = "msf6 exploit(ms17_010_eternalblue) >";
+                return "<span class='kali-blue'>[*] Using configured payload windows/x64/meterpreter/reverse_tcp</span>";
+            },
+            "set rhosts 192.168.1.42": () => {
+                if (stage < 1) return "<span class='danger'>[-] Error: Select an exploit first.</span>";
+                stage = 2;
+                return "rhosts => 192.168.1.42";
+            },
+            "exploit": () => {
+                if (stage < 2) return "<span class='danger'>[-] Exploit failed: RHOSTS must be set.</span>";
+                if (!targetUnlocked) return "<span class='danger'>[-] Exploit failed: Target not identified in system logs.</span>";
+                runExploitSequence();
+                return "<span class='kali-blue'>[*] Exploit running as background job 0...</span>";
+            },
+            "info": () => {
+                return targetUnlocked ?
+                    `Target: ${currentTarget}\nVulnerability: MS17-010 (EternalBlue)` :
+                    "No vulnerability data imported.";
+            },
+
+            // NEW: Meterpreter "Loot" Commands
+            "hashdump": () => {
+                if (!sessionActive) return null; // Logic handled in listener
+                return `Administrator:500:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::\n` +
+                    `Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::\n` +
+                    `<span class='success'>[+] Password hashes dumped successfully.</span>`;
+            },
+            "sysinfo": () => {
+                if (!sessionActive) return null;
+                return `Computer        : WIN7-OFFICE-PC\n` +
+                    `OS              : Windows 7 (6.1 Build 7601, Service Pack 1).\n` +
+                    `Architecture    : x64\n` +
+                    `System Language : en_US\n` +
+                    `Meterpreter     : x64/windows`;
+            },
+            "screenshot": () => {
+                if (!sessionActive) return null;
+                return `<span class='kali-blue'>[*] grabbing desktop screenshot...</span>\n` +
+                    `<span class='success'>[+] Screenshot saved to: /root/.msf4/loot/20260220_desktop.png</span>\n` +
+                    `<i style="color: #8b949e;">(Simulation: A 1920x1080 capture of WIN7-OFFICE-PC desktop acquired)</i>`;
+            },
+
+            "search -f *.txt": () => {
+                if (!sessionActive) return null;
+                return `<span class='kali-blue'>[*] Searching for files: *.txt</span>\n` +
+                    `========================================\n` +
+                    `C:\\Users\\Admin\\Desktop\\passwords.txt (32 bytes)\n` +
+                    `C:\\Users\\Admin\\Documents\\bank_transfer_codes.txt (1.2 KB)\n` +
+                    `C:\\Windows\\System32\\drivers\\etc\\hosts (824 bytes)\n` +
+                    `<span class='success'>[+] Search complete. 3 matches found.</span>`;
+            },
+
+            "arp": () => {
+                if (!sessionActive) return null;
+                discoveredNetwork = true;
+                return `IP Address       MAC Address           Interface\n` +
+                    `----------       -----------           ---------\n` +
+                    `192.168.1.1      00:50:56:e9:21:11     12\n` +
+                    `192.168.1.42     00:50:56:a2:b1:05     12 (Current)\n` +
+                    `<span class='warning'>192.168.1.105    00:50:56:f1:a0:88     12 (NEW DISCOVERY)</span>\n` +
+                    `192.168.1.255    ff:ff:ff:ff:ff:ff     12`;
+            },
+
+            "pivot add 192.168.1.105": () => {
+                if (!sessionActive) return null;
+                if (!discoveredNetwork) return "<span class='danger'>[-] Error: No target identified. Run 'arp' first.</span>";
+                return `<span class='kali-blue'>[*] Establishing pivot through session 1...</span>\n` +
+                    `<span class='success'>[+] Route added: 192.168.1.105/32 via Session 1</span>\n` +
+                    `[*] Traffic to .105 will now be tunneled through this Meterpreter session.`;
+            },
+
+            "help": () => sessionActive ?
+                "Meterpreter: sysinfo, hashdump, screenshot, search -f *.txt, arp, pivot add [IP], exit" :
+                "Available: use [exploit], set rhosts [ip], exploit, clear, info",
+            "help": () => sessionActive ?
+                "Meterpreter commands: sysinfo, hashdump, clear, exit" :
+                "Available: use [exploit], set rhosts [ip], exploit, clear, info",
+            "clear": () => { output.innerHTML = ""; return ""; },
+            "exit": () => {
+                if (sessionActive) {
+                    sessionActive = false;
+                    prompt.innerText = "msf6 exploit(ms17_010_eternalblue) >";
+                    return "[*] Shutting down Meterpreter session...";
+                }
+                return "Use 'clear' to reset terminal.";
+            }
+        };
+
+        // 3. INPUT LISTENER
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const val = input.value.trim();
+                const cmd = val.toLowerCase();
+
+                const line = document.createElement('div');
+                line.innerHTML = `<span style="color:#f85149">${prompt.innerText}</span> ${val}`;
+                output.appendChild(line);
+
+                if (commands[cmd]) {
+                    const result = commands[cmd]();
+                    if (result !== null) {
+                        const response = document.createElement('div');
+                        response.innerHTML = result;
+                        output.appendChild(response);
+                    }
+                } else if (val !== "") {
+                    const err = document.createElement('div');
+                    err.className = "danger";
+                    err.innerHTML = `[-] Unknown command: ${cmd}`;
+                    output.appendChild(err);
+                }
+
+                input.value = "";
+                output.scrollTop = output.scrollHeight;
+            }
+        });
+
+        // 4. ANIMATION
+        function runExploitSequence() {
+            const lines = [
+                "[*] 192.168.1.42:445 - Target OS: Windows 7 Ultimate",
+                "[*] 192.168.1.42:445 - Sending EternalBlue stage...",
+                "<span class='warning'>[!] 192.168.1.42:445 - Target is VULNERABLE</span>",
+                "<span class='success'>[+] 192.168.1.42:445 - SMBv1 exploit successful!</span>",
+                "<span class='success'>[+] Meterpreter session 1 opened!</span>",
+            ];
+
+            let i = 0;
+            const interval = setInterval(() => {
+                const div = document.createElement('div');
+                div.innerHTML = lines[i];
+                output.appendChild(div);
+                output.scrollTop = output.scrollHeight;
+                i++;
+                if (i >= lines.length) {
+                    clearInterval(interval);
+                    sessionActive = true; // ACTIVATES THE LOOT PATH
+                    prompt.innerText = "meterpreter >";
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+
+</html>

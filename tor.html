@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Tor Browser | Tactical Hub</title>
+    <style>
+        :root {
+            --tor-purple: #7d4698;
+            --tor-dark: #1a1a1a;
+            --tor-bg: #0a0a0a;
+            --neon-green: #00ff41;
+            --text-grey: #a0a0a0;
+            --border: #333;
+            --danger: #ff3e3e;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            background: var(--tor-bg);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- CONNECTION SCREEN --- */
+        #connect-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: radial-gradient(circle, #2e1a3a 0%, #050505 100%);
+            z-index: 1000;
+            position: absolute;
+            width: 100%;
+        }
+
+        .tor-logo {
+            width: 80px;
+            filter: drop-shadow(0 0 15px var(--tor-purple));
+            margin-bottom: 20px;
+        }
+
+        .btn-connect {
+            background: var(--tor-purple);
+            color: white;
+            border: none;
+            padding: 12px 45px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .btn-connect:hover {
+            background: #9659b8;
+            box-shadow: 0 0 15px var(--tor-purple);
+        }
+
+        /* --- BROWSER UI --- */
+        #browser-ui {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+            background: #fff;
+        }
+
+        .nav-bar {
+            background: var(--tor-dark);
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #000;
+        }
+
+        .nav-btns {
+            display: flex;
+            gap: 10px;
+            margin-right: 10px;
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            opacity: 0.3;
+            transition: 0.2s;
+        }
+
+        .nav-btn.active {
+            opacity: 1;
+        }
+
+        .nav-btn:hover {
+            color: var(--tor-purple);
+        }
+
+        .search-wrapper {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .address-bar {
+            background: #000;
+            border: 1px solid var(--tor-purple);
+            color: var(--neon-green);
+            width: 100%;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-family: monospace;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        /* Suggestions Dropdown */
+        #suggestions {
+            position: absolute;
+            top: 110%;
+            left: 10px;
+            right: 10px;
+            background: #1a1a1a;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: none;
+            z-index: 2000;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        .suggest-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #ccc;
+            border-bottom: 1px solid #222;
+        }
+
+        .suggest-item:hover {
+            background: var(--tor-purple);
+            color: white;
+        }
+
+        .suggest-header {
+            padding: 8px 15px;
+            font-size: 10px;
+            color: var(--tor-purple);
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        /* --- LAYOUT --- */
+        #main-layout {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        #content-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            color: #333;
+            padding: 40px;
+            background: #fff;
+        }
+
+        /* --- WEB PAGES --- */
+        .page {
+            display: none;
+            max-width: 800px;
+            margin: 0 auto;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .onion-result {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 10px;
+        }
+
+        .onion-result a {
+            color: #1a0dab;
+            text-decoration: none;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .onion-result a:hover {
+            text-decoration: underline;
+        }
+
+        .onion-result .url {
+            color: #006621;
+            font-size: 0.85em;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .tool-box {
+            background: #f8f9fa;
+            border-left: 5px solid var(--tor-purple);
+            padding: 25px;
+            border-radius: 4px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .code-snippet {
+            background: #1e1e1e;
+            color: #00ff41;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-top: 15px;
+            position: relative;
+            overflow-x: auto;
+        }
+
+        .code-snippet::before {
+            content: "TERMINAL COMMAND";
+            position: absolute;
+            top: 2px;
+            right: 10px;
+            font-size: 9px;
+            color: #555;
+        }
+
+        .intel-label {
+            font-weight: bold;
+            color: #555;
+            display: inline-block;
+            width: 120px;
+        }
+
+        .intel-value {
+            font-family: monospace;
+            color: var(--tor-purple);
+            font-weight: bold;
+        }
+
+        .danger-text {
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        .download-btn {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 15px;
+            transition: 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="connect-screen">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/1/15/Tor-logo-2011-flat.svg" class="tor-logo"
+            alt="Tor">
+        <h3 id="status-text">Relay Circuit: Offline</h3>
+        <button class="btn-connect" onclick="startConnection()">Establish Connection</button>
+    </div>
+
+    <div id="browser-ui">
+        <div class="nav-bar">
+            <div class="nav-btns">
+                <button class="nav-btn" id="back-btn" onclick="navBack()">←</button>
+                <button class="nav-btn" id="fwd-btn" onclick="navForward()">→</button>
+            </div>
+            <div class="search-wrapper">
+                <input type="text" class="address-bar" id="url-bar" value="onion://search.onion"
+                    onfocus="showSuggestions()" onblur="hideSuggestions()">
+                <div id="suggestions">
+                    <div class="suggest-header">Verified Hidden Services</div>
+                    <div class="suggest-item" onmousedown="goTO('onion://intel.onion')">Infrastructure Leak Logs (Recon)</div>
+                    <div class="suggest-item" onmousedown="goTO('onion://corplex.onion')">CorpLex Systems (Internal Audit)</div>
+                    <div class="suggest-item" onmousedown="goTO('onion://aether.onion')">Aether Chemicals (Project Overlord)</div>
+                    <div class="suggest-item" onmousedown="goTO('onion://tools.onion')">Tactical Toolkit Manual</div>
+                    <div class="suggest-item" onmousedown="goTO('onion://cracking.onion')">Rainbow Table Hub</div>
+                    <div class="suggest-item" onmousedown="goTO('onion://john.onion')">John The Ripper Repo</div>
+                </div>
+            </div>
+            <button onclick="handleNavigation()"
+                style="background:var(--tor-purple); color:white; border:none; padding:6px 15px; border-radius:4px; cursor:pointer; font-weight:bold">GO</button>
+        </div>
+
+        <div id="main-layout">
+            <div id="content-area">
+
+                <div id="page-search" class="page active">
+                    <h1 style="color:var(--tor-purple); text-align:center; margin-top:0;">The Onion Search</h1>
+                    <p style="text-align:center; color:#666; margin-bottom:40px;">Encrypted Gateway to the Invisible Web
+                    </p>
+
+                    <div id="search-results">
+                        <div class="onion-result" style="border: 1px solid #ffcc00; background: #fffdf5; padding: 15px; border-radius: 5px;">
+                            <span style="background:#ffcc00; color:black; font-size:10px; padding:2px 5px; font-weight:bold; border-radius:3px;">NEW INTEL</span>
+                            <br>
+                            <a onclick="goTO('onion://intel.onion')">System Infrastructure & Recon Logs</a>
+                            <span class="url">osint_leaks_db.onion</span>
+                            <p>Critical data leaks containing network topology, IP addresses, and administrative usernames for local subnets.</p>
+                        </div>
+
+                        <div class="onion-result">
+                            <a onclick="goTO('onion://john.onion')">John the Ripper - Official Hidden Repo [v1.9.0]</a>
+                            <span class="url">jtr_official_core.onion</span>
+                            <p>The legendary fast password cracker. Supports MD5, SHA, and Blowfish. Use with local
+                                wordlists for dictionary attacks.</p>
+                        </div>
+
+                        <div class="onion-result">
+                            <a onclick="goTO('onion://corplex.onion')">CorpLex Systems - Security Audit Leak
+                                [Internal]</a>
+                            <span class="url">corplex77_leak.onion</span>
+                            <p>Internal network diagram and employee usernames for the 192.168.1.10 subnet.</p>
+                        </div>
+
+                        <div class="onion-result">
+                            <a onclick="goTO('onion://aether.onion')">Aether Chemicals - Project Overlord Dossier</a>
+                            <span class="url">aether_overlord.onion</span>
+                            <p>REDACTED files regarding legacy server infrastructure at 192.168.1.42.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-intel" class="page">
+                    <h2 style="color:var(--tor-purple)">[OSINT] Infrastructure Reconnaissance</h2>
+                    <div class="tool-box">
+                        <h3>Leaked Target Data</h3>
+                        <p>Analytical report of the 192.168.1.X subnet discovery.</p>
+                        <div style="background:#111; padding:15px; border-radius:4px; font-family:monospace; font-size:12px; line-height:1.6; color: var(--neon-green);">
+                            <div>[SCAN RESULT] Target: CorpLex Mainframe</div>
+                            <div style="margin-left:10px;">> Host IP: <span style="color:white; background:var(--danger); padding: 0 4px;">192.168.1.10</span></div>
+                            <div style="margin-left:10px;">> Admin User: <span style="color:white; background:var(--tor-purple); padding: 0 4px;">sys_admin_alpha</span></div>
+                            <br>
+                            <div>[SCAN RESULT] Target: Aether Legacy Server</div>
+                            <div style="margin-left:10px;">> Host IP: <span style="color:white; background:var(--danger); padding: 0 4px;">192.168.1.42</span></div>
+                            <div style="margin-left:10px;">> Vulnerability: SMBv1 (MS17-010) detected.</div>
+                        </div>
+                        <p style="font-size:13px; color:#555; margin-top:15px;">Use these credentials and IPs in the terminal to establish a remote connection.</p>
+                    </div>
+                </div>
+
+                <div id="page-john" class="page">
+                    <h2 style="color:var(--tor-purple)">Binary: John the Ripper</h2>
+                    <div class="tool-box">
+                        <p><span class="intel-label">Type:</span> <span class="intel-value">Offline Password
+                                Cracker</span></p>
+                        <p><span class="intel-label">Supported:</span> <span class="intel-value">MD5, SHA1, SHA256,
+                                Kerberos</span></p>
+                        <p>John the Ripper is a tool designed to find weak passwords via dictionary attacks. To crack
+                            the <code>creds.md5</code> file found on OMNI systems, use the following syntax:</p>
+                        <div class="code-snippet">john wordlist.txt creds.md5</div>
+                        <hr style="border:0; border-top:1px solid #ddd; margin: 20px 0;">
+                        <h3>Required Assets</h3>
+                        <p>Dictionary attacks require a comprehensive wordlist. Download our standard tactical list
+                            below:</p>
+                        <button class="download-btn" onclick="fakeDownload()">Download wordlist.txt</button>
+                        <p id="download-status"
+                            style="font-size: 12px; color: #28a745; margin-top: 5px; display: none;">File synced to
+                            local home directory.</p>
+                    </div>
+                </div>
+
+                <div id="page-corplex" class="page">
+                    <h2 style="color:var(--tor-purple)">[INTERNAL] CorpLex Systems Dossier</h2>
+                    <div class="tool-box">
+                        <p><span class="intel-label">Target IP:</span> <span class="intel-value">192.168.1.10</span></p>
+                        <p><span class="intel-label">User:</span> <span class="intel-value">sys_admin_alpha</span></p>
+                        <p><span class="intel-label">Status:</span> <span class="danger-text">SSH VULNERABLE</span></p>
+                        <div class="code-snippet">ssh sys_admin_alpha@192.168.1.10</div>
+                    </div>
+                </div>
+
+                <div id="page-aether" class="page">
+                    <h2 style="color:var(--danger)">[INTEL] Aether Chemicals: Project Overlord</h2>
+                    <div class="tool-box">
+                        <p><span class="intel-label">Critical Node:</span> <span class="intel-value">192.168.1.42</span>
+                        </p>
+                        <div class="code-snippet">use exploit/windows/smb/ms17_010_eternalblue</div>
+                    </div>
+                </div>
+
+                <div id="page-tools" class="page">
+                    <h2>Tactical Toolkit Documentation</h2>
+                    <div class="tool-box">
+                        <h3>Nmap (Network Mapper)</h3>
+                        <div class="code-snippet">nmap [target_ip]</div>
+                    </div>
+                </div>
+
+                <div id="page-cracking" class="page">
+                    <h2>Rainbow Table Hub</h2>
+                    <div class="tool-box">
+                        <p><span class="intel-label">Active Hash:</span> <span
+                                class="intel-value">21232f297a57a5a743894a0e4a801fc3</span></p>
+                        <div class="code-snippet">john wordlist.txt creds.md5</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let historyStack = ['onion://search.onion'];
+        let forwardStack = [];
+
+        function startConnection() {
+            const status = document.getElementById('status-text');
+            const btn = document.querySelector('.btn-connect');
+            btn.style.display = 'none';
+            status.innerText = "Building 3-Hop Circuit...";
+            setTimeout(() => {
+                document.getElementById('connect-screen').style.display = 'none';
+                document.getElementById('browser-ui').style.display = 'flex';
+            }, 1500);
+        }
+
+        function showSuggestions() { document.getElementById('suggestions').style.display = 'block'; }
+        function hideSuggestions() { setTimeout(() => { document.getElementById('suggestions').style.display = 'none'; }, 200); }
+
+        function goTO(url, pushToStack = true) {
+            if (pushToStack) {
+                if (url !== historyStack[historyStack.length - 1]) { historyStack.push(url); }
+                forwardStack = [];
+            }
+
+            document.getElementById('url-bar').value = url;
+            updateNavButtons();
+
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
+            if (url.includes('corplex')) document.getElementById('page-corplex').classList.add('active');
+            else if (url.includes('aether')) document.getElementById('page-aether').classList.add('active');
+            else if (url.includes('tools')) document.getElementById('page-tools').classList.add('active');
+            else if (url.includes('cracking')) document.getElementById('page-cracking').classList.add('active');
+            else if (url.includes('john')) document.getElementById('page-john').classList.add('active');
+            else if (url.includes('intel')) document.getElementById('page-intel').classList.add('active');
+            else document.getElementById('page-search').classList.add('active');
+
+            document.getElementById('content-area').scrollTop = 0;
+        }
+
+        function handleNavigation() {
+            let val = document.getElementById('url-bar').value.toLowerCase();
+            if (val.includes('john') || val.includes('password cracker')) {
+                goTO('onion://john.onion');
+            } else if (val.includes('intel') || val.includes('recon')) {
+                goTO('onion://intel.onion');
+            } else {
+                if (!val.startsWith('onion://')) val = 'onion://' + val;
+                goTO(val);
+            }
+        }
+
+        function navBack() {
+            if (historyStack.length > 1) {
+                const current = historyStack.pop();
+                forwardStack.push(current);
+                goTO(historyStack[historyStack.length - 1], false);
+            }
+        }
+
+        function navForward() {
+            if (forwardStack.length > 0) {
+                const next = forwardStack.pop();
+                historyStack.push(next);
+                goTO(next, false);
+            }
+        }
+
+        function updateNavButtons() {
+            document.getElementById('back-btn').classList.toggle('active', historyStack.length > 1);
+            document.getElementById('fwd-btn').classList.toggle('active', forwardStack.length > 0);
+        }
+
+        document.getElementById('url-bar').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleNavigation();
+        });
+
+        function fakeDownload() {
+            const status = document.getElementById('download-status');
+            status.style.display = 'block';
+            status.innerText = "Downloading...";
+
+            setTimeout(() => {
+                status.innerText = "wordlist.txt saved to /home/guest/";
+
+                // Notify the Parent (Kali Desktop)
+                window.parent.postMessage({
+                    type: 'FILE_DOWNLOADED',
+                    file: 'wordlist.txt'
+                }, '*');
+            }, 1000);
+        }
+    </script>
+</body>
+
+</html>
