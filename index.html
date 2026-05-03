@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hacking Simulation System | Entry Point</title>
+    <style>
+        :root {
+            --kali-blue: #007bff;
+            --kali-dark: #0f111a;
+            --kali-grey: #1c1f2b;
+            --success: #27c93f;
+            --border: #30363d;
+            --glow: rgba(0, 123, 255, 0.5);
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Fira Code', monospace;
+            background: #000;
+            color: #d1d5da;
+            scroll-behavior: smooth;
+        }
+
+        /* Hero Background */
+        .hero-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('https://images.wallpapersden.com/image/download/kali-linux-dragon-hd-cool-art_bGZmbGeUmZqaraWkpJRmbmdlrWZlbWU.jpg') no-repeat center center;
+            background-size: cover;
+            filter: brightness(0.3);
+            z-index: -1;
+        }
+
+        /* Top Header */
+        header {
+            height: 60px;
+            background: rgba(15, 17, 26, 0.9);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 50px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .logo {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #fff;
+            letter-spacing: 2px;
+        }
+
+        .logo span {
+            color: var(--kali-blue);
+        }
+
+        .nav-links a {
+            color: #d1d5da;
+            text-decoration: none;
+            margin-left: 30px;
+            font-size: 13px;
+            transition: 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--kali-blue);
+        }
+
+        /* Main Landing Content */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 100px 20px;
+            text-align: center;
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            color: #fff;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px var(--glow);
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: var(--kali-blue);
+            margin-bottom: 40px;
+        }
+
+        /* Auth Cards */
+        .auth-section {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 50px;
+        }
+
+        .card {
+            background: var(--kali-dark);
+            border: 1px solid var(--border);
+            padding: 40px;
+            width: 350px;
+            transition: 0.3s;
+            border-radius: 4px;
+        }
+
+        .card:hover {
+            border-color: var(--kali-blue);
+            box-shadow: 0 0 20px rgba(0, 123, 255, 0.1);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #8b949e;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: var(--kali-blue);
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 2px;
+            transition: 0.3s;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--kali-blue);
+            color: var(--kali-blue);
+        }
+
+        .btn:hover {
+            filter: brightness(1.2);
+            box-shadow: 0 0 15px var(--glow);
+        }
+
+        /* Simulation Features Section */
+        .features {
+            margin-top: 150px;
+            text-align: left;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-box {
+            padding: 20px;
+            border-left: 3px solid var(--kali-blue);
+            background: rgba(28, 31, 43, 0.5);
+        }
+
+        .feature-box h3 {
+            color: #fff;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .feature-box p {
+            font-size: 0.85rem;
+            color: #8b949e;
+            line-height: 1.5;
+        }
+
+        .workflow {
+            margin-top: 100px;
+            padding: 50px;
+            background: rgba(15, 17, 26, 0.8);
+            border: 1px dashed var(--border);
+        }
+
+        .workflow h2 {
+            color: var(--success);
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+
+        footer {
+            padding: 50px;
+            text-align: center;
+            font-size: 10px;
+            color: #555;
+            border-top: 1px solid var(--border);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            width: 400px;
+            background: var(--kali-dark);
+            border: 1px solid var(--kali-blue);
+            box-shadow: 0 0 30px var(--glow);
+        }
+
+        .modal-header {
+            background: var(--kali-grey);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .close-modal {
+            cursor: pointer;
+            color: #8b949e;
+        }
+
+        .close-modal:hover {
+            color: #fff;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        /* Update the Enlist Now button to trigger the modal */
+        #enlistBtn {
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="hero-bg"></div>
+
+    <header>
+        <div class="logo">HACKING<span>SIM</span></div>
+        <div class="nav-links">
+            <a href="#about">Mission Brief</a>
+            <a href="#tools">Toolsets</a>
+            <a href="login.html">Sign In</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1 class="hero-title">Hacking Simulation System</h1>
+        <p class="hero-subtitle">The Ultimate Virtual Lab for Penetration Testing</p>
+
+        <div class="auth-section">
+            <!-- Sign Up Card -->
+            <div class="card">
+                <h2>New Recruit</h2>
+                <p>Register your credentials to create a new session and begin your training in the tactical
+                    environment.</p>
+                <a href="#" class="btn">Enlist Now</a>
+            </div>
+
+            <!-- Login Card -->
+            <div class="card">
+                <h2>Returning Operative</h2>
+                <p>Already have access? Proceed to the command center to resume your current exploitation mission.</p>
+                <a href="login.html" class="btn btn-outline">Access Console</a>
+            </div>
+        </div>
+
+        <div id="about" class="workflow">
+            <h2>[ MISSION WORKFLOW ]</h2>
+            <p>Your simulation follows a realistic attack lifecycle. You must navigate the ecosystem strategically:</p>
+            <p style="color: #fff; margin-top: 20px;">
+                <span style="color:var(--kali-blue)">STEP 01:</span> Gather Intel via <strong>Tor Browser</strong>
+                (Darkweb sources).<br><br>
+                <span style="color:var(--kali-blue)">STEP 02:</span> Pivot to the <strong>Kali Terminal</strong> to run
+                reconnaissance.<br><br>
+                <span style="color:var(--kali-blue)">STEP 03:</span> Launch the <strong>Metasploit Console</strong> for
+                final exploitation.
+            </p>
+        </div>
+
+        <div id="tools" class="features">
+            <div class="feature-box">
+                <h3>🐉 Kali Terminal</h3>
+                <p>A fully interactive Bash environment. Execute network commands, manage file systems, and interface
+                    with system binaries.</p>
+            </div>
+            <div class="feature-box">
+                <h3>🧅 Tor Browser</h3>
+                <p>Anonymized browsing simulation. Access hidden directories to uncover target vulnerabilities and leak
+                    logs.</p>
+            </div>
+            <div class="feature-box">
+                <h3>💀 Metasploit Pro</h3>
+                <p>Advanced exploitation framework. Use gathered intel to select payloads and establish meterpreter
+                    sessions.</p>
+            </div>
+            <div class="feature-box">
+                <h3>📡 Nmap Integrated</h3>
+                <p>Real-time port scanning and service detection to find the weak link in the target infrastructure.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add this Modal Structure right before the closing </body> tag -->
+    <div id="signupModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>◈ NEW_RECRUIT_REGISTRATION</span>
+                <span class="close-modal" onclick="closeSignup()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="enlistForm" onsubmit="handleSignup(event)">
+                    <div class="input-group">
+                        <label>Assigned Callsign (Username)</label>
+                        <input type="text" class="kali-input" placeholder="e.g. ZeroCool" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Secure Uplink Email</label>
+                        <input type="email" class="kali-input" placeholder="op@secure-mail.com" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Encryption Key (Password)</label>
+                        <input type="password" class="kali-input" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn" style="width:100%">GENERATE CREDENTIALS</button>
+                </form>
+                <div id="signupStatus" style="margin-top:15px; font-size:11px; text-align:center;"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        HACKING SIMULATION SYSTEM V3.0 | FOR EDUCATIONAL PURPOSES ONLY | &copy; 2026
+    </footer>
+
+</body>
+<script>
+    const modal = document.getElementById('signupModal');
+    const enlistBtn = document.querySelector('.auth-section .card:first-child .btn');
+
+    // Change the "Enlist Now" link behavior
+    enlistBtn.href = "javascript:void(0)";
+    enlistBtn.onclick = () => modal.style.display = 'flex';
+
+    function closeSignup() {
+        modal.style.display = 'none';
+    }
+
+    // Close modal if clicking outside of it
+    window.onclick = (event) => {
+        if (event.target == modal) closeSignup();
+    }
+
+    function handleSignup(e) {
+        e.preventDefault();
+        const status = document.getElementById('signupStatus');
+        status.style.color = 'var(--kali-blue)';
+        status.innerText = "INITIALIZING VIRTUAL ENVIRONMENT...";
+
+        setTimeout(() => {
+            status.style.color = 'var(--success)';
+            status.innerText = "ACCOUNT CREATED. PROCEED TO LOGIN.";
+            setTimeout(() => {
+                window.location.href = "login.html";
+            }, 1500);
+        }, 2000);
+    }
+</script>
+
+</html>

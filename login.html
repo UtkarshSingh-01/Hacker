@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kali Linux | System Login</title>
+    <style>
+        :root {
+            --kali-blue: #007bff;
+            --kali-dark: #0f111a;
+            --kali-grey: #1c1f2b;
+            --success: #27c93f;
+            --border: #30363d;
+            --error: #f85149;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: 'Fira Code', monospace;
+            background: #000 url('https://images.wallpapersden.com/image/download/kali-linux-dragon-hd-cool-art_bGZmbGeUmZqaraWkpJRmbmdlrWZlbWU.jpg') no-repeat center center;
+            background-size: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #d1d5da;
+        }
+
+        /* Overlay to darken background for readability */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1;
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 10;
+            width: 350px;
+            background: var(--kali-dark);
+            border: 1px solid var(--border);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .login-header {
+            background: var(--kali-grey);
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .login-header .icon {
+            color: var(--kali-blue);
+            font-size: 18px;
+        }
+
+        .login-header span {
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            color: #8b949e;
+        }
+
+        .login-body {
+            padding: 25px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 11px;
+            margin-bottom: 8px;
+            color: var(--kali-blue);
+            text-transform: uppercase;
+        }
+
+        .kali-input {
+            width: 100%;
+            background: #000;
+            border: 1px solid var(--border);
+            padding: 10px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        .kali-input:focus {
+            outline: none;
+            border-color: var(--kali-blue);
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.2);
+        }
+
+        .login-btn {
+            width: 100%;
+            background: var(--kali-blue);
+            color: white;
+            border: none;
+            padding: 12px;
+            font-weight: bold;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .login-btn:hover {
+            background: #0056b3;
+        }
+
+        .status-msg {
+            margin-top: 15px;
+            font-size: 10px;
+            text-align: center;
+            min-height: 15px;
+        }
+
+        .footer-info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            text-align: center;
+            font-size: 9px;
+            color: #555;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Glitch effect for the Dragon/Brand */
+        .brand {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .brand img {
+            width: 60px;
+            filter: drop-shadow(0 0 5px var(--kali-blue));
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="overlay"></div>
+
+    <div class="login-container">
+        <div class="login-header">
+            <span class="icon">◈</span>
+            <span>SYSTEM AUTHENTICATION</span>
+        </div>
+
+        <div class="login-body">
+            <div class="brand">
+                <img src="https://www.kali.org/images/kali-logo.svg" alt="Kali Logo">
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="input-group">
+                    <label>Operator ID</label>
+                    <input type="text" id="username" class="kali-input" placeholder="root" required autocomplete="off">
+                </div>
+
+                <div class="input-group">
+                    <label>Access Key</label>
+                    <input type="password" id="password" class="kali-input" placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" class="login-btn">Initialize Session</button>
+            </form>
+
+            <div id="status" class="status-msg">READY FOR ACCESS...</div>
+        </div>
+
+        <div class="footer-info">
+            AUTHORIZED PERSONNEL ONLY | ENCRYPTION: AES-256
+        </div>
+    </div>
+
+    <script>
+        function handleLogin(e) {
+            e.preventDefault();
+            const status = document.getElementById('status');
+            const btn = document.querySelector('.login-btn');
+            
+            // Visual feedback
+            status.style.color = 'var(--kali-blue)';
+            status.innerText = "AUTHENTICATING...";
+            btn.disabled = true;
+            btn.style.opacity = "0.7";
+
+            setTimeout(() => {
+                const user = document.getElementById('username').value;
+                // Simple simulation logic
+                if (user === 'root') {
+                    status.style.color = 'var(--success)';
+                    status.innerText = "ACCESS GRANTED. REDIRECTING...";
+                    setTimeout(() => {
+                        window.location.href = "desktop.html";
+                    }, 1000);
+                } else {
+                    status.style.color = 'var(--error)';
+                    status.innerText = "ERROR: INVALID CREDENTIALS";
+                    btn.disabled = false;
+                    btn.style.opacity = "1";
+                }
+            }, 1500);
+        }
+    </script>
+</body>
+
+</html>
