@@ -3,5 +3,5 @@ This is a simulation system to demonstrate the process that the hackers or the p
 It simulates the use of tools including-
 1. Nmap
 2. Metasploit
-3. Kali-terminnal
+3. Kali-terminal
 4. Tor Browser
