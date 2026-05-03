@@ -268,6 +268,11 @@
     <script>
         /* --- VFS CONFIG --- */
         let isWordlistDownloaded = false; // Track download state
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionUser = sessionStorage.getItem('kali_user') || urlParams.get('user') || 'guest';
+        let currentUser = sessionUser;
+
         const vfs = {
             "~": { type: "dir", children: ["bin", "home", "sys"] },
             "~/bin": { type: "dir", children: ["nmap", "ssh", "john", "clear", "help", "msfconsole"] },
@@ -358,7 +363,9 @@
         const commands = {
             "help": () => "Available: ls, cd, cat, nmap, john, ssh, clear, whoami",
 
-            "whoami": () => isRoot ? "root (System Administrator)" : "guest (Temporary Access)",
+            "whoami": () => {
+                return isRoot ? "root (System Administrator)" : `${currentUser} (Standard User)`;
+            },
 
             "clear": () => { history.innerHTML = ''; return ''; },
 
@@ -544,11 +551,16 @@
         };
 
         function updatePrompt() {
-            const userStr = isRoot ? 'root' : 'guest';
+            // If the user hasn't escalated to root, use the session name
+            const displayUser = isRoot ? 'root' : currentUser;
             const char = isRoot ? '#' : '$';
+
             document.getElementById('prompt-container').innerHTML =
-                `<span class="prompt-user">${userStr}@omni</span>:<span class="prompt-path">${currentPath}</span>${char}`;
+                `<span class="prompt-user">${displayUser}@omni</span>:<span class="prompt-path">${currentPath}</span>${char}`;
         }
+
+        // Call this once at the very start to initialize the UI
+        updatePrompt();
 
         /* --- EVENT HANDLERS --- */
         cmdInput.addEventListener('keydown', (e) => {
@@ -556,7 +568,8 @@
                 const val = cmdInput.value.trim();
                 const [cmd, ...args] = val.split(" ");
 
-                print(`<span class="prompt-user">${isRoot ? 'root' : 'guest'}@omni</span>:${currentPath}$ ${val}`);
+                const displayUser = isRoot ? 'root' : currentUser;
+                print(`<span class="prompt-user">${displayUser}@omni</span>:${currentPath}$ ${val}`);
 
                 if (commands[cmd]) {
                     const out = commands[cmd](args);

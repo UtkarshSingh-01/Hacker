@@ -371,19 +371,25 @@
     }
 
     function handleSignup(e) {
-        e.preventDefault();
-        const status = document.getElementById('signupStatus');
-        status.style.color = 'var(--kali-blue)';
-        status.innerText = "INITIALIZING VIRTUAL ENVIRONMENT...";
+    e.preventDefault();
+    const inputs = e.target.querySelectorAll('input');
+    const signupData = {
+        username: inputs[0].value,
+        email: inputs[1].value,
+        password: inputs[2].value
+    };
 
-        setTimeout(() => {
-            status.style.color = 'var(--success)';
-            status.innerText = "ACCOUNT CREATED. PROCEED TO LOGIN.";
-            setTimeout(() => {
-                window.location.href = "login.html";
-            }, 1500);
-        }, 2000);
-    }
+    fetch('http://127.0.0.1:5000/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(signupData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('signupStatus').innerText = "CREDENTIALS STORED IN CSV. REDIRECTING...";
+        setTimeout(() => window.location.href = "login.html", 1500);
+    });
+}
 </script>
 
 </html>

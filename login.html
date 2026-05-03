@@ -194,31 +194,28 @@
     <script>
         function handleLogin(e) {
             e.preventDefault();
-            const status = document.getElementById('status');
-            const btn = document.querySelector('.login-btn');
-            
-            // Visual feedback
-            status.style.color = 'var(--kali-blue)';
-            status.innerText = "AUTHENTICATING...";
-            btn.disabled = true;
-            btn.style.opacity = "0.7";
+            const loginData = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
 
-            setTimeout(() => {
-                const user = document.getElementById('username').value;
-                // Simple simulation logic
-                if (user === 'root') {
-                    status.style.color = 'var(--success)';
-                    status.innerText = "ACCESS GRANTED. REDIRECTING...";
-                    setTimeout(() => {
+            fetch('http://127.0.0.1:5000/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(loginData)
+            })
+                .then(response => {
+                    if (response.ok) {
+                        // SAVE THE USERNAME HERE
+                        const userIn = document.getElementById('username').value;
+                        sessionStorage.setItem('kali_user', userIn);
+                        
                         window.location.href = "desktop.html";
-                    }, 1000);
-                } else {
-                    status.style.color = 'var(--error)';
-                    status.innerText = "ERROR: INVALID CREDENTIALS";
-                    btn.disabled = false;
-                    btn.style.opacity = "1";
-                }
-            }, 1500);
+                    } else {
+                        document.getElementById('status').innerText = "INVALID CREDENTIALS IN CSV DATABASE";
+                    }
+                })
+                .catch(err => console.error("Is the Python server running?"));
         }
     </script>
 </body>

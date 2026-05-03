@@ -268,7 +268,7 @@
 
     <div id="term-win" class="window" style="width: 750px; height: 450px; top: 80px; left: 100px;">
         <div class="window-header" onmousedown="dragElement(this.parentElement)">
-            <span class="window-title">kali@kali: ~</span>
+            <span id="term-user-title" class="window-title">kali@kali: ~</span>
             <div class="controls">
                 <div class="ctrl">_</div>
                 <div class="ctrl" onclick="toggleMaximize(this.closest('.window'))">□</div>
@@ -321,6 +321,19 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Get the username from storage (default to 'kali' if not found)
+            const activeUser = sessionStorage.getItem('kali_user') || 'kali';
+
+            // 2. Find the window title element
+            const titleElement = document.getElementById('term-user-title');
+
+            // 3. Update the text
+            if (titleElement) {
+                titleElement.innerText = `${activeUser}@kali: ~`;
+            }
+        });
+        
         let topZ = 1000;
 
         function openWindow(id) {
@@ -442,7 +455,7 @@
 
                     // Crucial: Wait for the new page to load, then send the unlock data
                     termFrame.onload = () => {
-                        termFrame.contentWindow.postMessage({ 
+                        termFrame.contentWindow.postMessage({
                             type: 'VULN_DATA_FOUND',
                             targetIp: event.data.targetIp
                         }, '*');
